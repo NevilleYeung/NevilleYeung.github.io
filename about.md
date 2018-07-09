@@ -3,7 +3,7 @@ layout: page
 title: 关于我 
 ---
 
-一个Java后端开发者，爱分享。
+一个Java开发者，爱分享。
 <p>
 
 <h3> 关于博客 </h3>  
