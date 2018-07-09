@@ -1,6 +1,6 @@
 # Basic
 title: 蚊帐
-subtitle: 博客
+subtitle: 勿用打火机查看
 description: Welcome!
 # 头像里面的标题
 avatarTitle: Hello Kitty
@@ -18,18 +18,18 @@ social:
     weibo: Null 
     github: NevilleYeung
     # twitter: 
-    mail: Null
+    mail: wj89757@126.com
 
 # 百度统计 
 # 使用博客模板请去掉或者更换 id 
-baidu:
-    id: Null  
+#baidu:
+#    id: Null  
 
 # Google Analytics
 # 使用博客模板请去掉或者更换 id
-ga:
-    id: Null   
-    host: auto  
+#ga:
+#    id: Null   
+#    host: auto  
 
 
 # 《----------------- 上面的信息修改成你自己的 ---------------------------》
