@@ -18,7 +18,7 @@ ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵
 
 <br>
 
-转载请注明：[蚊帐的博客](https://nevilleyeung.github.io) » [点击阅读原文](https://nevilleyeung.github.io/2018/07/Details——ServiceComb代码分析JavaChassis/) 
+转载请注明：[蚊帐的博客](https://nevilleyeung.github.io) » [点击阅读原文](https://nevilleyeung.github.io/2018/07/Details-ServiceComb-CodeAnalysis-JavaChassis/) 
 
  
 
