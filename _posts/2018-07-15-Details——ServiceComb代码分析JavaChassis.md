@@ -1,8 +1,8 @@
 ---
 layout: post
-title: "Python自动化测试iOS项目"
+title: "ServiceComb代码分析——Java Chassis"
 date: 2018-07-15 
-tags: ServiceComb  
+tags: ServiceComb 代码分析
 ---
 
 ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵化版本，官网：http://servicecomb.incubator.apache.org/cn/。本文是基于1.0.0-mX版本的代码进行分析。       
