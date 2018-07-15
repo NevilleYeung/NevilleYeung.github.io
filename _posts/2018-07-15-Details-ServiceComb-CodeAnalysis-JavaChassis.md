@@ -12,7 +12,17 @@ ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵
 ### bmi微服务实例       
 
 根据官网的快速入门，我们调试了samples目录下的bmi微服务实例。    
+启动入口如下：
+```     
+@SpringBootApplication
+@EnableServiceComb
+public class CalculatorApplication {
 
+  public static void main(String[] args) {
+    SpringApplication.run(CalculatorApplication.class, args);
+  }
+}
+```  
 
 
 
