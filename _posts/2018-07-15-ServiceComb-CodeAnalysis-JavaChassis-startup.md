@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "ServiceComb代码分析——Java Chassis"
+title: "ServiceComb代码分析——Java Chassis启动流程"
 date: 2018-07-15 
 tags: ServiceComb 代码分析
 ---
@@ -14,7 +14,7 @@ ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵
 
 从 [Java Chassis官方文档](https://huaweicse.github.io/servicecomb-java-chassis-doc/zh_CN/) 可以了解到，Java Chassis其实是一个用于快速构建微服务的JAVA SDK。       
 如下图，我们可以将其4大模块理解为，【编程模型】将代码抽象为【服务契约】，以不同的【通信模型】提供带有【服务治理】功能的服务。
-<img src="/images/posts/Details-ServiceComb-CodeAnalysis-JavaChassis/architecture.png" alt="Java Chassis架构" />
+<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture.png" alt="Java Chassis架构" />
 话不多说，接下来我们要以一个 [官方demo](https://github.com/apache/incubator-servicecomb-java-chassis/tree/1.0.0-mX/demo/demo-pojo) 为入口，走读分析其代码。
 
 
@@ -44,7 +44,7 @@ Log4jUtils.init()和BeanUtils.init()先后完成了日志和服务的初始化�
 
 1、实例化上下文对象       
 BeanUtils.init()方法会实例化spring的ClassPathXmlApplicationContext对象，并加载所有jar包中以【.bean.xml】结尾的文件。
-<img src="/images/posts/Details-ServiceComb-CodeAnalysis-JavaChassis/BeansUtils.png" />
+<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/BeansUtils.png" alt="BeansUtils" />
 如果不了解ClassPathXmlApplicationContext的具体作用，可以Google。
 
 2、spring容器触发事件  
@@ -111,7 +111,7 @@ public class CseApplicationListener
 
 ### SCBEngine初始化代码分析       
 
-走读SCBEngine的代码，可以发现是由doInit()方法实现了初始化的动作，如下。  
+走读SCBEngine的代码，可以发现是由doInit()方法实现了初始化的动作。  
 ```     
   private void doInit() throws Exception {
     status = SCBStatus.STARTING;
@@ -148,7 +148,7 @@ public class CseApplicationListener
     transportManager.init();
     triggerEvent(EventType.AFTER_TRANSPORT);
 
-    // TODO 将各服务的契约信息（SchemaMata）取出，与transport绑定。
+    // 将各服务的契约信息（SchemaMata）取出，与transport绑定。完成这步操作后，服务才能被正常访问。
     schemaListenerManager.notifySchemaListener();
 
     // TODO RestEngineSchemaListener的onBootEvent会被触发。
@@ -165,12 +165,17 @@ public class CseApplicationListener
   }
 ``` 
 
+由此我们可以先简单地将这些代码与各模块对应起来。  
+<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture&code.png" alt="architecture&code" />
+在上图的1和2中，将使用不同编程模式的代码抽象成服务契约；  
+服务契约和3的服务治理模块，在与4的通信模型绑定后，就可向外部提供服务；  
+服务的访问与被访问，都会经过3的服务治理模块。
 
-
+以上是关于初始化流程代码的简要分析，后续会有更多的博文对其进行详细分析。  
 
 <br>
 
-转载请注明：[蚊帐的博客](https://nevilleyeung.github.io) » [点击阅读原文](https://nevilleyeung.github.io/2018/07/Details-ServiceComb-CodeAnalysis-JavaChassis/) 
+转载请注明：[蚊帐的博客](https://nevilleyeung.github.io) » [点击阅读原文](https://nevilleyeung.github.io/2018/07/ServiceComb-CodeAnalysis-JavaChassis-startup/) 
 
  
 
