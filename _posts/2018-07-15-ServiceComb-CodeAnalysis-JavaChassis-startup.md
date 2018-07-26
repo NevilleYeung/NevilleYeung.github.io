@@ -13,8 +13,8 @@ ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵
 ### 概述       
 
 从 [Java Chassis官方文档](https://huaweicse.github.io/servicecomb-java-chassis-doc/zh_CN/) 可以了解到，Java Chassis其实是一个用于快速构建微服务的JAVA SDK。       
-如下图，我们可以将其4大模块理解为，【编程模型】将代码抽象为【服务契约】，以不同的【通信模型】提供带有【服务治理】功能的服务。
-<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture.png" alt="Java Chassis架构" />
+如下图1，我们可以将其4大模块理解为，【编程模型】将代码抽象为【服务契约】，以不同的【通信模型】提供带有【服务治理】功能的服务。
+<div style="text-align:center"><img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture.png" alt="Java Chassis架构" /><p>图1</p></div>  
 话不多说，接下来我们要以一个 [官方demo](https://github.com/apache/incubator-servicecomb-java-chassis/tree/1.0.0-mX/demo/demo-pojo) 为入口，走读分析其代码。
 
 
@@ -44,7 +44,7 @@ Log4jUtils.init()和BeanUtils.init()先后完成了日志和服务的初始化�
 
 1、实例化上下文对象       
 BeanUtils.init()方法会实例化spring的ClassPathXmlApplicationContext对象，并加载所有jar包中以【.bean.xml】结尾的文件。
-<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/BeansUtils.png" alt="BeansUtils" />
+<div style="text-align:center"><img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/BeansUtils.png" alt="BeansUtils" /><p>图2</p></div>  
 如果不了解ClassPathXmlApplicationContext的具体作用，可以Google。
 
 2、spring容器触发事件  
@@ -166,12 +166,61 @@ public class CseApplicationListener
 ``` 
 
 由此我们可以先简单地将这些代码与各模块对应起来。  
-<img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture&code.png" alt="architecture&code" />
-在上图的1和2中，将使用不同编程模式的代码抽象成服务契约；  
-服务契约和3的服务治理模块，在与4的通信模型绑定后，就可向外部提供服务；  
-服务的访问与被访问，都会经过3的服务治理模块。
+<div style="text-align:center"><img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture&code.png" alt="architecture&code" /><p>图3</p></div>  
+在上图的红框1和2中，将使用不同编程模式的代码抽象成服务契约；  
+服务契约和红框3的服务治理模块，在与红框4的通信模型绑定后，就可向外部提供服务；  
+服务的访问与被访问，都会经过3的服务治理模块。  
 
-以上是关于初始化流程代码的简要分析，后续会有更多的博文对其进行详细分析。  
+
+### HandlerConfigUtils初始化代码分析       
+
+如图3所示，初始化过程中HandlerConfigUtils的init方法会被调用，用于加载servicecomb自带或者自己开发的handler。至于handler的作用，以后再说。  
+```     
+public final class HandlerConfigUtils {
+  private HandlerConfigUtils() {
+  }
+
+  private static Config loadConfig() throws Exception {
+    Config config = new Config();
+
+    List<Resource> resList =
+        PaaSResourceUtils.getSortedResources("classpath*:config/cse.handler.xml", ".handler.xml");
+    for (Resource res : resList) {
+      Config tmpConfig = XmlLoaderUtils.load(res, Config.class);
+      config.mergeFrom(tmpConfig);
+    }
+
+    return config;
+  }
+
+  public static void init() throws Exception {
+    // 1、加载所有cse.handler.xml中的配置，配置内容一般如下所示：
+    // <config>
+    //   <handler id="simpleLB"
+    //     class="org.apache.servicecomb.core.handler.impl.SimpleLoadBalanceHandler"/>
+    // </config>
+    Config config = loadConfig();
+    // 2、将config存入两个对象中。两个类都是继承AbstractHandlerManager，因此调用的都是同一个方法。
+    ConsumerHandlerManager.INSTANCE.init(config);
+    ProducerHandlerManager.INSTANCE.init(config);
+  }
+}
+``` 
+
+>* 1、Java Chassis自带的cse.handler.xml中，共有6个handler：  
+"qps-flowcontrol-consumer" -> "class org.apache.servicecomb.qps.ConsumerQpsFlowControlHandler"  
+"qps-flowcontrol-provider" -> "class org.apache.servicecomb.qps.ProviderQpsFlowControlHandler"  
+"bizkeeper-consumer" -> "class org.apache.servicecomb.bizkeeper.ConsumerBizkeeperHandler"  
+"loadbalance" -> "class org.apache.servicecomb.loadbalance.LoadbalanceHandler"  
+"simpleLB" -> "class org.apache.servicecomb.core.handler.impl.SimpleLoadBalanceHandler"  
+"bizkeeper-provider" -> "class org.apache.servicecomb.bizkeeper.ProviderBizkeeperHanlder"  
+>* 2、将配置存入服务端和消费端，后续服务调用的场景将会用到。  
+
+### ProviderManager初始化代码分析       
+
+
+
+  
 
 <br>
 
