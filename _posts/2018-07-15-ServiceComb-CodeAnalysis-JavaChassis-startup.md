@@ -167,7 +167,8 @@ public class CseApplicationListener
 
 由此我们可以先简单地将这些代码与各模块对应起来。  
 <div style="text-align:center"><img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture&code.png" alt="architecture&code" /><p>图3</p></div>  
-在上图的红框1和2中，将使用不同编程模式的代码抽象成服务契约；  
+初始化流程代码与模块的对应关系如上图；至于各模块的服务流程，后续博文再进行分析。  
+而这几个模块的关系，我们可以这样理解。红框1和2中，将使用不同编程模式的代码抽象成服务契约；  
 服务契约和红框3的服务治理模块，在与红框4的通信模型绑定后，就可向外部提供服务；  
 服务的访问与被访问，都会经过3的服务治理模块。  
 
