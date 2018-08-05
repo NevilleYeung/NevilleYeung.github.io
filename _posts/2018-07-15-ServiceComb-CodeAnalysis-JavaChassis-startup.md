@@ -217,10 +217,72 @@ public final class HandlerConfigUtils {
 "bizkeeper-provider" -> "class org.apache.servicecomb.bizkeeper.ProviderBizkeeperHanlder"  
 >* 2、将配置存入服务端和消费端，后续服务调用的场景将会用到。  
 
+
 ### ProviderManager初始化代码分析       
 
+前面有提到producerProviderManager和consumerProviderManager的初始化操作。  
+这两个类的init()方法，主要作用是：  
+将整个微服务实例的信息与具体的的业务方法，抽象成microservice->scheme->operation这样一个树状结构的服务信息。  
+通过microserviceId、schemeId和operationId，就能唯一确认一个业务方法。这样就能在服务调用中快速找到需要被调用的方法。  
+下面是ProducerProviderManager的部分代码：  
+```     
+@Component
+public class ProducerProviderManager implements BootListener {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProducerProviderManager.class);
 
+  // TODO spring自动注入ProducerProvider接口的所有实现类：PojoProducerProvider和RestProducerProvider
+  @Autowired(required = false)
+  private List<ProducerProvider> producerProviderList = Collections.emptyList();
 
+  @Inject
+  private MicroserviceMetaManager microserviceMetaManager;
+
+  private MicroserviceMeta microserviceMeta;
+
+  public void init() throws Exception {
+    for (ProducerProvider provider : producerProviderList) {
+      // 调用PojoProducerProvider和RestProducerProvider的init方法，如前面所说，完成微服务实例信息的抽象
+      provider.init();
+    }
+
+    Microservice microservice = RegistryUtils.getMicroservice();
+    microserviceMeta = microserviceMetaManager.getOrCreateMicroserviceMeta(microservice);
+    for (SchemaMeta schemaMeta : microserviceMeta.getSchemaMetas()) {
+      String content = SchemaUtils.swaggerToString(schemaMeta.getSwagger());
+      microservice.addSchema(schemaMeta.getSchemaId(), content);
+    }
+  }
+
+  // 其他方法略……
+}
+``` 
+
+而ConsumerProviderManager的初始化代码则什么都没做。  
+与producer类似，ConsumerProviderManager自动注入ConsumerProvider接口的所有实现类：PojoConsumerProvider和RestConsumerProvider，而后调用两者的init方法。  
+PojoConsumerProvider和RestConsumerProvider都继承了AbstractConsumerProvider类，但两者都没有实现自己的init方法。而父类的init方法是空的。（摊手  
+
+### transportManager通信协议初始化代码分析       
+
+transport指的就是Java Chassis提供的两种通信协议，rest和highway。  
+初始化操作的内容是，初始化服务提供端的相关配置，绑定服务ip并监听相关端口。  
+在分析这段代码前，先看一下pojo demo的microservice.yaml文件。  
+```     
+APPLICATION_ID: pojotest
+service_description:
+  name: pojo
+  version: 0.0.4
+servicecomb:
+  service:
+    registry:
+      address: http://127.0.0.1:30100
+  rest:
+    address: 0.0.0.0:8080?protocol=http2
+  highway:
+    address: 0.0.0.0:7070
+``` 
+我们可以看到，yaml文件配置了rest和highway两种通信方式，端口则分别是8080和7070。所以，服务启动后，会监听这两个端口并对外提供服务。  
+
+To be continued...
   
 
 <br>
