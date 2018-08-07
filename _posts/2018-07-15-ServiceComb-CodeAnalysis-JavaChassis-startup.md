@@ -144,7 +144,7 @@ public class CseApplicationListener
     // 初始化内容：
     // 1、从Vertx和Servlet中选一个作为rest的通信方式，默认是Vertx；
     // 2、将需要监听的ip和端口（endpoint）存入Microservice实例；
-    // 3、按配置初始化各transport。
+    // 3、按配置初始化各transport，拉起端口监听。
     transportManager.init();
     triggerEvent(EventType.AFTER_TRANSPORT);
 
@@ -263,8 +263,7 @@ PojoConsumerProvider和RestConsumerProvider都继承了AbstractConsumerProvider�
 
 ### transportManager通信协议初始化代码分析       
 
-transport指的就是Java Chassis提供的两种通信协议，rest和highway。  
-初始化操作的内容是，初始化服务提供端的相关配置，绑定服务ip并监听相关端口。  
+transport指的就是Java Chassis提供的通信协议，有两种：rest和highway。  
 在分析这段代码前，先看一下pojo demo的microservice.yaml文件。  
 ```     
 APPLICATION_ID: pojotest
@@ -281,6 +280,92 @@ servicecomb:
     address: 0.0.0.0:7070
 ``` 
 我们可以看到，yaml文件配置了rest和highway两种通信方式，端口则分别是8080和7070。所以，服务启动后，会监听这两个端口并对外提供服务。  
+
+其实，通信协议初始化的操作只有2步：
+>* 1、读取用户配置；  
+>* 2、将配置好的协议启动，并拉起监听。 
+
+具体细节，容我们一起看看TransportManager的代码。  
+```     
+@Component
+public class TransportManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TransportManager.class);
+
+  // spring注入3个实现了transport接口的类：
+  // rest：VertxRestTransport、ServletRestTransport
+  // highway：HighwayTransport
+  @Inject
+  private List<Transport> transports;
+
+  private Map<String, Transport> transportMap = new HashMap<>();
+
+  public void setTransports(List<Transport> transports) {
+    this.transports = transports;
+  }
+
+  public void init() throws Exception {
+    // 构造一个通信协议的map，key为协议名，如："rest","highway"，value为transport对象。
+    // 从两个rest的transport类中，选择一个作为rest的通信协议。
+    // 例："rest" -> "VertxRestTransport", "highway" -> "HighwayTransport"
+    // 更多细节请查看该函数代码注释。
+    buildTransportMap();
+
+    for (Transport transport : transportMap.values()) {
+      // 初始化通信协议，拉起服务监听（细节参考下文的链接）
+      if (transport.init()) {
+        // 服务监听成功后，将endpoint（即ip和端口）存入微服务对象中
+        Endpoint endpoint = transport.getPublishEndpoint();
+        if (endpoint != null && endpoint.getEndpoint() != null) {
+          LOGGER.info("endpoint to publish: {}", endpoint.getEndpoint());
+          Microservice microservice = RegistryUtils.getMicroservice();
+          microservice.getInstance().getEndpoints().add(endpoint.getEndpoint());
+        }
+        continue;
+      }
+    }
+  }
+
+  protected void buildTransportMap() {
+    // 生成一个这样的map：
+    // "rest" -> "VertxRestTransport, ServletRestTransport"
+    // "highway" -> "HighwayTransport"
+    Map<String, List<Transport>> groups = groupByName();
+
+    // 从rest的两个transport类中选择一个作为rest的通信协议，而highway只有一个
+    for (Entry<String, List<Transport>> entry : groups.entrySet()) {
+      List<Transport> group = entry.getValue();
+
+      // 确保list中transport的优先级配置不相同
+      checkTransportGroup(group);
+      // 从transport list中选择一个作为通信协议，rest二选一，highway只有一个
+      Transport transport = chooseOneTransport(group);
+      // 生成我们需要的map
+      transportMap.put(transport.getName(), transport);
+    }
+  }
+
+  protected Transport chooseOneTransport(List<Transport> group) {
+    // 将list中的transport对象，以getOrder方法的返回值为关键字，升序排列。
+    // rest：VertxRestTransport的getOrder方法返回值是-1000，而ServletRestTransport则是默认值0，因此，排序后的list是：VertxRestTransport, ServletRestTransport
+    group.sort(Comparator.comparingInt(Transport::getOrder));
+
+    // 按顺序遍历list，无配置或配置的ip和端口合法，则使用该transport。
+    // 因此，rest的默认transport是VertxRestTransport。
+    for (Transport transport : group) {
+      if (transport.canInit()) {
+        LOGGER.info("choose {} for {}.", transport.getClass().getName(), transport.getName());
+        return transport;
+      }
+    }
+
+  // 其他方法略...
+}
+```  
+
+从上面的代码可以看到，rest有两个transport类而highway只有一个。  
+至于两个rest通信协议的区别和使用场景，可以查看其官方文档 [通信协议](http://docs.servicecomb.io/zh_CN/build-provider/protocol.html) 。  
+
+
 
 To be continued...
   
