@@ -364,6 +364,7 @@ public class TransportManager {
 
 从上面的代码可以看到，rest有两个transport类而highway只有一个。  
 至于两个rest通信协议的区别和使用场景，可以查看其官方文档 [通信协议](http://docs.servicecomb.io/zh_CN/build-provider/protocol.html) 。  
+各transport的服务端启动流程，可参考这篇博文 [服务端的启动](https://nevilleyeung.github.io/2018/08/ServiceComb-CodeAnalysis-Transport-startup/) 。
 
 
 
