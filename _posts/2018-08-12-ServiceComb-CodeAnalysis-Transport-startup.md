@@ -141,11 +141,140 @@ public class VertxRestDispatcher extends AbstractVertxHttpDispatcher {
 
 ### HighwayTransport的初始化       
 
+直接开始看HighwayTransport类的代码。  
+```     
+@Component
+public class HighwayTransport extends AbstractTransport {
+  public static final String NAME = "highway";
 
+  private HighwayClient highwayClient = new HighwayClient();
 
+  @Override
+  public String getName() {
+    return NAME;
+  }
 
+  public boolean init() throws Exception {
+    // TODO 初始化一个tcp连接的客户端
+    highwayClient.init(transportVertx);
 
+    // 从配置中读取服务端线程数，默认为1
+    DeploymentOptions deployOptions = new DeploymentOptions().setInstances(HighwayConfig.getServerThreadCount());
+    // 从配置中读取服务ip和端口，构造出来的endpoint通常是这样： highway://0.0.0.0:7070?login=true
+    // 至于为何会多出一个login=true，后面的highway通信的文章再写吧
+    setListenAddressWithoutSchema(HighwayConfig.getAddress(), Collections.singletonMap(TcpConst.LOGIN, "true"));
+    SimpleJsonObject json = new SimpleJsonObject();
+    // 设置服务端需要绑定的ip和端口，即endpoint
+    json.put(ENDPOINT_KEY, getEndpoint());
+    deployOptions.setConfig(json);
+    // vertx会调用HighwayServerVerticle类进行服务端的初始化
+    return VertxUtils.blockDeploy(transportVertx, HighwayServerVerticle.class, deployOptions);
+  }
+
+  @Override
+  public void send(Invocation invocation, AsyncResponse asyncResp) throws Exception {
+    highwayClient.send(invocation, asyncResp);
+  }
+}
+``` 
+与前面的rest协议类似，highway协议会调用HighwayServerVerticle的start方法进行服务端的初始化。  
+```     
+public class HighwayServerVerticle extends AbstractVerticle {
   
+  // 其它方法略
+
+  @Override
+  public void start(Future<Void> startFuture) throws Exception {
+    try {
+      super.start();
+      // 拉起服务端口的监听
+      startListen(startFuture);
+    } catch (Throwable e) {
+      // vert.x got some states that not print error and execute call back in VertexUtils.blockDeploy, we add a log our self.
+      LOGGER.error("", e);
+      throw e;
+    }
+  }
+
+  protected void startListen(Future<Void> startFuture) {
+    // 如果本地未配置地址，则表示不必监听，只需要作为客户端使用即可
+    if (endpointObject == null) {
+      LOGGER.warn("highway listen address is not configured, will not listen.");
+      startFuture.complete();
+      return;
+    }
+
+    // HighwayServer继承了TcpServer类，init方法是在TcpServer类中实现的
+    HighwayServer server = new HighwayServer(endpoint);
+    // 参数ar是服务启动后的处理函数
+    server.init(vertx, SSL_KEY, ar -> {
+      if (ar.succeeded()) {
+        InetSocketAddress socketAddress = ar.result();
+        LOGGER.info("highway listen success. address={}:{}",
+            socketAddress.getHostString(),
+            socketAddress.getPort());
+        startFuture.complete();
+        return;
+      }
+
+      LOGGER.error(HighwayTransport.NAME, ar.cause());
+      startFuture.fail(ar.cause());
+    });
+  }
+}
+``` 
+从上面的代码可以看出，highway协议的服务端初始化操作是在TcpServer中实现的，如下。  
+
+
+```     
+public class TcpServer {
+  // 其它方法略
+
+  public void init(Vertx vertx, String sslKey, AsyncResultCallback<InetSocketAddress> callback) {
+    NetServer netServer;
+    if (endpointObject.isSslEnabled()) {
+      SSLOptionFactory factory =
+          SSLOptionFactory.createSSLOptionFactory(sslKey, null);
+      SSLOption sslOption;
+      if (factory == null) {
+        sslOption = SSLOption.buildFromYaml(sslKey);
+      } else {
+        sslOption = factory.createSSLOption();
+      }
+      SSLCustom sslCustom = SSLCustom.createSSLCustom(sslOption.getSslCustomClass());
+      NetServerOptions serverOptions = new NetServerOptions();
+      VertxTLSBuilder.buildNetServerOptions(sslOption, sslCustom, serverOptions);
+      netServer = vertx.createNetServer(serverOptions);
+    } else {
+      netServer = vertx.createNetServer();
+    }
+
+    netServer.connectHandler(netSocket -> {
+      TcpServerConnection connection = createTcpServerConnection();
+      connection.init(netSocket);
+    });
+
+    InetSocketAddress socketAddress = endpointObject.getSocketAddress();
+    netServer.listen(socketAddress.getPort(), socketAddress.getHostString(), ar -> {
+      if (ar.succeeded()) {
+        callback.success(socketAddress);
+        return;
+      }
+
+      // 监听失败
+      String msg = String.format("listen failed, address=%s", socketAddress.toString());
+      callback.fail(new Exception(msg, ar.cause()));
+    });
+  }
+
+  protected TcpServerConnection createTcpServerConnection() {
+    return new TcpServerConnection();
+  }
+}
+``` 
+
+// to be continued
+
 
 <br>
 
