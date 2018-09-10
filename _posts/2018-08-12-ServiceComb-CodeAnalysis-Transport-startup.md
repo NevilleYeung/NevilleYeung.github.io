@@ -206,7 +206,7 @@ public class HighwayServerVerticle extends AbstractVerticle {
 
     // HighwayServer继承了TcpServer类，init方法是在TcpServer类中实现的
     HighwayServer server = new HighwayServer(endpoint);
-    // 参数ar是服务启动后的处理函数
+    // 参数ar是服务启动后处理函数
     server.init(vertx, SSL_KEY, ar -> {
       if (ar.succeeded()) {
         InetSocketAddress socketAddress = ar.result();
@@ -225,13 +225,13 @@ public class HighwayServerVerticle extends AbstractVerticle {
 ``` 
 从上面的代码可以看出，highway协议的服务端初始化操作是在TcpServer中实现的，如下。  
 
-
 ```     
 public class TcpServer {
   // 其它方法略
 
   public void init(Vertx vertx, String sslKey, AsyncResultCallback<InetSocketAddress> callback) {
     NetServer netServer;
+    // 根据是否需要鉴权来创建不同的netServer对象
     if (endpointObject.isSslEnabled()) {
       SSLOptionFactory factory =
           SSLOptionFactory.createSSLOptionFactory(sslKey, null);
@@ -249,11 +249,14 @@ public class TcpServer {
       netServer = vertx.createNetServer();
     }
 
+    // 绑定处理请求的handler
+    // 由于HighwayServer类重写了createTcpServerConnection()方法，connection是HighwayServerConnection的实例
     netServer.connectHandler(netSocket -> {
       TcpServerConnection connection = createTcpServerConnection();
       connection.init(netSocket);
     });
 
+    // 拉起监听
     InetSocketAddress socketAddress = endpointObject.getSocketAddress();
     netServer.listen(socketAddress.getPort(), socketAddress.getHostString(), ar -> {
       if (ar.succeeded()) {
@@ -272,9 +275,9 @@ public class TcpServer {
   }
 }
 ``` 
-
-// to be continued
-
+highway协议的服务端，是通过vertx的NetServer来拉起监听，对外提供服务。  
+而处理请求的handler则是HighwayServerConnection类，它负责解析pb报文、调用业务方法。  
+业务处理模块，后面再细说吧。  
 
 <br>
 

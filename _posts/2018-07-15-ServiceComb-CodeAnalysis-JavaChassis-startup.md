@@ -12,7 +12,7 @@ ServiceComb是华为开源的微服务框架，目前已发布第一个Apache孵
 
 ### 概述       
 
-从 [Java Chassis官方文档](https://huaweicse.github.io/servicecomb-java-chassis-doc/zh_CN/) 可以了解到，Java Chassis其实是一个用于快速构建微服务的JAVA SDK。       
+从 [Java Chassis官方文档](https://docs.servicecomb.io/java-chassis/zh_CN/) 可以了解到，Java Chassis其实是一个用于快速构建微服务的JAVA SDK。       
 如下图1，我们可以将其4大模块理解为，【编程模型】将代码抽象为【服务契约】，以不同的【通信模型】提供带有【服务治理】功能的服务。
 <div style="text-align:center"><img src="/images/posts/ServiceComb-CodeAnalysis-JavaChassis-startup/architecture.png" alt="Java Chassis架构" /><p>图1</p></div>  
 话不多说，接下来我们要以一个 [官方demo](https://github.com/apache/incubator-servicecomb-java-chassis/tree/1.0.0-mX/demo/demo-pojo) 为入口，走读分析其代码。
@@ -363,7 +363,7 @@ public class TransportManager {
 ```  
 
 从上面的代码可以看到，rest有两个transport类而highway只有一个。  
-至于两个rest通信协议的区别和使用场景，可以查看其官方文档 [通信协议](http://docs.servicecomb.io/zh_CN/build-provider/protocol.html) 。  
+至于两个rest通信协议的区别和使用场景，可以查看其官方文档 [通信协议](https://docs.servicecomb.io/java-chassis/zh_CN/build-provider/protocol.html) 。  
 各transport的服务端启动流程，可参考这篇博文 [服务端的启动](https://nevilleyeung.github.io/2018/08/ServiceComb-CodeAnalysis-Transport-startup/) 。
 
 
