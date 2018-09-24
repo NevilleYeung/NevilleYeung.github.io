@@ -368,6 +368,68 @@ public class TransportManager {
 
 
 
+### schemaListenerManager初始化代码分析       
+
+// TODO
+
+
+
+### RegistryUtils服务注册与心跳定时任务初始化代码分析       
+
+RegistryUtils的run方法，最终会调用到RemoteServiceRegistry类的run方法，在线程池中分配两个定时任务。  
+
+```     
+public class RemoteServiceRegistry extends AbstractServiceRegistry {
+
+  // 其它代码略
+
+  @Override
+  public void init() {
+    super.init();
+    taskPool = new ScheduledThreadPoolExecutor(2, new ThreadFactory() {
+      @Override
+      public Thread newThread(Runnable task) {
+        return new Thread(task, "Service Center Task");
+      }
+    }, new RejectedExecutionHandler() {
+      @Override
+      public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
+        LOGGER.warn("Too many pending tasks, reject " + task.getClass().getName());
+      }
+    });
+  }
+
+  // 其它代码略
+
+  @Override
+  public void run() {
+    super.run();
+
+    // 启动与服务中心相关的定时任务serviceCenterTask：
+    // 服务注册、服务实例注册、watch和心跳
+    taskPool.scheduleAtFixedRate(serviceCenterTask,
+        serviceRegistryConfig.getHeartbeatInterval(),
+        serviceRegistryConfig.getHeartbeatInterval(),
+        TimeUnit.SECONDS);
+
+    // 定时向进程内部发出PeriodicPullEvent事件，向服务中心拉取依赖的服务实例
+    taskPool.scheduleAtFixedRate(
+        () -> eventBus.post(new PeriodicPullEvent()),
+        serviceRegistryConfig.getInstancePullInterval(),
+        serviceRegistryConfig.getInstancePullInterval(),
+        TimeUnit.SECONDS);
+  }
+
+  // 其它代码略
+}
+``` 
+从上面的代码可以看出，这两个定时任务分别是serviceCenterTask和eventBus.post(new PeriodicPullEvent())。  
+>* serviceCenterTask  
+
+
+
+
+
 To be continued...
   
 
