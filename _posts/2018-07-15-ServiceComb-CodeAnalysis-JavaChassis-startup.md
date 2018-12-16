@@ -148,7 +148,7 @@ public class CseApplicationListener
     transportManager.init();
     triggerEvent(EventType.AFTER_TRANSPORT);
 
-    // 将各服务的契约信息（SchemaMata）取出，与transport绑定。完成这步操作后，服务才能被正常访问。
+    // 将各服务的契约信息（SchemaMata）取出，将契约信息加载到契约管理中。完成这步操作后，服务才能被正常访问。
     schemaListenerManager.notifySchemaListener();
 
     // TODO RestEngineSchemaListener的onBootEvent会被触发。
@@ -370,7 +370,36 @@ public class TransportManager {
 
 ### schemaListenerManager初始化代码分析       
 
-// TODO
+跟踪schemaListenerManager.notifySchemaListener()的代码，可以发现它最后会调用SchemaListener接口的onSchemaLoaded方法。  
+该接口会将契约信息加载到契约管理中，当服务接口被调用时，则可从契约管理中找到对应的契约，从而找到对应的接口。  
+```     
+  public void notifySchemaListener(SchemaMeta... schemaMetas) {
+    for (SchemaListener listener : schemaListenerList) {
+      listener.onSchemaLoaded(schemaMetas);
+    }
+  }
+```  
+而实现了SchemaListener接口的类只有一个，便是RestEngineSchemaListener了，如下。  
+```     
+  @Override
+  public void onSchemaLoaded(SchemaMeta... schemaMetas) {
+    // 此时相应的ServicePathManager可能正在被使用，为避免太高的复杂度，使用copy on write逻辑
+    Map<String, ServicePathManager> mgrMap = new HashMap<>();
+    for (SchemaMeta schemaMeta : schemaMetas) {
+      MicroserviceMeta microserviceMeta = schemaMeta.getMicroserviceMeta();
+      ServicePathManager mgr = findPathManager(mgrMap, microserviceMeta);
+      // 将契约路径加载到ServicePathManager中
+      mgr.addSchema(schemaMeta);
+    }
+
+    for (ServicePathManager mgr : mgrMap.values()) {
+      // 对具有动态path operation进行排序
+      mgr.sortPath();
+
+      mgr.saveToMicroserviceMeta();
+    }
+  }
+```  
 
 
 
