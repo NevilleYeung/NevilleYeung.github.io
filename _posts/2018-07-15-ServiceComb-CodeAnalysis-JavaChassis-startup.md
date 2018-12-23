@@ -160,7 +160,11 @@ public class CseApplicationListener
     // 调用RemoteServiceRegistry的run方法，启动心跳、注册、watch等定时任务。
     RegistryUtils.run();
 
-    // TODO 添加优雅关闭的方法。
+    // 添加优雅关闭的方法。
+    // destory方法：1、将自身的服务实例信息在服务中心中unregistry掉；
+    // 2、确保所有请求处理完；
+    // 3、destroy掉配置中心上的相关配置；
+    // 4、通知BootListener相关的事件。
     Runtime.getRuntime().addShutdownHook(new Thread(this::destroy));
   }
 ``` 
@@ -389,6 +393,7 @@ public class TransportManager {
       MicroserviceMeta microserviceMeta = schemaMeta.getMicroserviceMeta();
       ServicePathManager mgr = findPathManager(mgrMap, microserviceMeta);
       // 将契约路径加载到ServicePathManager中
+      // 消费端发出请求时会先从ServicePathManager中查找
       mgr.addSchema(schemaMeta);
     }
 
@@ -454,13 +459,27 @@ public class RemoteServiceRegistry extends AbstractServiceRegistry {
 ``` 
 从上面的代码可以看出，这两个定时任务分别是serviceCenterTask和eventBus.post(new PeriodicPullEvent())。  
 >* serviceCenterTask  
+serviceCenterTask会调用MicroserviceServiceCenterTask的任务。而MicroserviceServiceCenterTask则会发起微服务注册、服务实例注册、watch和心跳这4个任务。  
+```     
+public class MicroserviceServiceCenterTask extends CompositeTask {
+  public MicroserviceServiceCenterTask(EventBus eventBus, ServiceRegistryConfig serviceRegistryConfig,
+      ServiceRegistryClient srClient, Microservice microservice) {
+    // 微服务注册任务：将微服务信息注册到服务中心
+    addTask(new MicroserviceRegisterTask(eventBus, srClient, microservice));
+    // 微服务实例注册任务：将微服务实例信息注册到服务中心
+    addTask(new MicroserviceInstanceRegisterTask(eventBus, serviceRegistryConfig, srClient, microservice));
+    // 微服务实例watch任务：在调用其他服务的时候，会从服务中心查询其他服务的实例信息。
+    // 服务中心支持使用PULL和PUSH两种模式通知实例变化。
+    // PUSH，指的是服务中心往Java chassis push实例变化信息。
+    // PULL，指的是Java chassis往服务中心pull实例变化信息。
+    addTask(new MicroserviceWatchTask(eventBus, serviceRegistryConfig, srClient, microservice));
+    // 微服务实例心跳任务：Java chassis定时向服务中心发送心跳信息
+    addTask(new MicroserviceInstanceHeartbeatTask(eventBus, srClient, microservice));
+  }
+}
+``` 
 
 
-
-
-
-To be continued...
-  
 
 <br>
 
