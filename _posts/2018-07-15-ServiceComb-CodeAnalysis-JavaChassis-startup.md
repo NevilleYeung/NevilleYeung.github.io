@@ -459,6 +459,7 @@ public class RemoteServiceRegistry extends AbstractServiceRegistry {
 ``` 
 从上面的代码可以看出，这两个定时任务分别是serviceCenterTask和eventBus.post(new PeriodicPullEvent())。  
 >* serviceCenterTask  
+
 serviceCenterTask会调用MicroserviceServiceCenterTask的任务。而MicroserviceServiceCenterTask则会发起微服务注册、服务实例注册、watch和心跳这4个任务。  
 ```     
 public class MicroserviceServiceCenterTask extends CompositeTask {
@@ -479,6 +480,8 @@ public class MicroserviceServiceCenterTask extends CompositeTask {
 }
 ``` 
 
+>* eventBus.post(new PeriodicPullEvent())  
+定时从服务中心拉取该服务实例所依赖的服务提供端的实例信息。  
 
 
 <br>
